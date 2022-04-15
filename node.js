@@ -8,9 +8,13 @@ class CanvasNode{
         this.content = null; 
     }
     draw(ctx) {
-        
-        ctx.fillStyle = "Red";
+
+        ctx.strokeStyle = "blue"
         ctx.strokeRect(this.x, this.y, this.width, this.height);
+        ctx.strokeStyle = "black"
+        ctx.roundRect(this.x, this.y, this.width, this.height,50,false,true);
+        ctx.font = '14px serif';
+        ctx.fillText('Hello world', this.x, this.y);      
         ctx.save();
         ctx.restore();
     }

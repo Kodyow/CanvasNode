@@ -5,16 +5,28 @@ class GameEngine {
         // What you will use to draw
         // Documentation: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
         this.ctx = null;
+        this.canvas = null;
+        this.camera = {x: 0, y:0}
 
         // Everything that will be updated and drawn each frame
-        this.entities = [];
+        
         this.click = null;
         this.mouse = null;
+        this.isDragging = false;
+        this.dragStart = {x:0,y:0};
         this.action = "add";
+        this.zoom = 1;
+
+        this.originalWidth = window.innerWidth;
+        this.originalHeight = window.innerHeight;  
+        this.width = window.innerWidth / this.zoom;
+        this.height = window.innerHeight / this.zoom;
+        this.scaleWidth = this.width/this.originalWidth;
+        this.scaleHeight = this.height/this.originalHeight;
 
         // THE KILL SWITCH
         this.running = false;
-
+        this.entities = [];
         // Options and the Details
         this.options = {
             prevent: {
@@ -25,8 +37,9 @@ class GameEngine {
         }
     };
 
-    init(ctx) {
+    init(ctx,canvas) {
         this.ctx = ctx;
+        this.canvas = canvas;
         this.startInput();
         this.timer = new Timer();
     };
@@ -41,23 +54,68 @@ class GameEngine {
         };
         gameLoop();
     };
+    getXandY(e) {
+        var rect = this.canvas.getBoundingClientRect();
+        var scaleX = this.canvas.width/rect.width;
+        var scaleY = this.canvas.height /rect.height;
+        return {
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY
+        }
+
+    };
 
     startInput() {
         var that = this;
 
-        const getXandY = e => ({
-            x: e.clientX - that.ctx.canvas.getBoundingClientRect().left,
-            y: e.clientY - that.ctx.canvas.getBoundingClientRect().top
-        });
+
+        window.addEventListener('contextmenu', function (e) { 
+            e.preventDefault(); 
+        }, false);
+
+        this.ctx.canvas.addEventListener("mousedown", function (e) {
+            e.preventDefault();
+            if (e.button === 2) {
+                that.canvas.style.cursor = "grabbing";
+                that.isDragging = true;
+                var mouse = that.getXandY(e);
+                that.dragStart.x = mouse.x/that.zoom - that.camera.x;
+                that.dragStart.y = mouse.y/that.zoom - that.camera.y;
+            } 
+        }, false);
 
         this.ctx.canvas.addEventListener("mousemove", function (e) {
-            that.mouse = getXandY(e);
+            if (that.isDragging)
+            {
+                var mouse = that.getXandY(e);
+                
+                that.camera.x = mouse.x/that.zoom - that.dragStart.x
+                that.camera.y = mouse.y/that.zoom - that.dragStart.y
+                if (that.camera.x > 0) {
+                    that.camera.x = 0;
+                }
+                if (that.camera.y > 0) {
+                    that.camera.y = 0;
+                }
+                if (that.camera.x - that.originalWidth < -7680) {
+                    that.camera.x = -7680 + that.originalWidth;
+                }
+                if (that.camera.y - that.originalHeight< -4320) {
+                    that.camera.y = -4320 + that.originalHeight;
+                }
+            }
+
+        }, false);
+        
+        this.ctx.canvas.addEventListener("mouseup", function (e) {
+            that.isDragging = false;
+            that.canvas.style.cursor = "default";
+            console.log(that.camera.x);
         }, false);
 
         this.ctx.canvas.addEventListener("click", function (e) {
-            that.click = getXandY(e);
-            console.log(that.click);
-            that.addEntity(new CanvasNode(that.click.x,that.click.y,100,100));
+            that.click = that.getXandY(e);
+            that.addEntity(new CanvasNode((that.click.x -that.camera.x)*that.scaleWidth ,(that.click.y-that.camera.y)*that.scaleHeight,200,100));
             console.log(that.entities);
         }, false);
 
@@ -66,44 +124,6 @@ class GameEngine {
                 case "Space":
                     that.up = true;
                     break;
-
-                case "KeyW":
-                    that.up = true;
-                    break;
-
-                case "KeyA":
-                    that.left = true;
-                    break;    
-
-                case "KeyS":
-                    that.down = true;
-                    break;
-
-                case "KeyD":
-                    that.right = true;
-                    break;
-
-                case "KeyJ":
-                    that.attack = true;
-                    break;
-
-                case "KeyI":
-                    that.titan= true;
-                    break;
-                case "KeyM":
-                    that.transform = true;
-                    break;
-
-                case "KeyK":
-                    that.specialK = true;
-                    break;
-
-                case "KeyL":
-                    that.specialL = true;
-                    break;
-
-                case "ShiftLeft":
-                    that.run = true;
             }
         }, false);
 
@@ -112,32 +132,6 @@ class GameEngine {
                 case "Space":
                     that.up = false;
                     break;
-
-                case "KeyW":
-                    that.up = false;
-                    break;
-
-                case "KeyA":
-                    that.left = false;
-                    break;    
-
-                case "KeyS":
-                    that.down = false;
-                    break;
-
-                case "KeyD":
-                    that.right = false;
-                    break;
-
-                case "KeyK":
-                    that.specialK = false;
-                    break;
-
-                case "KeyL":
-                    that.specialL = false;
-                    break;
-                case "ShiftLeft":
-                    that.run = false;
             }
         }, false);
     };
@@ -147,14 +141,36 @@ class GameEngine {
     };
 
     draw() {
+        
         // Clear the whole canvas with transparent color (rgba(0, 0, 0, 0))
-        this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+        
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.ctx.translate(0, 0);
+        this.ctx.scale(this.zoom,this.zoom);
+        this.ctx.translate( this.camera.x, this.camera.y );
 
+        this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+        var xPos = 0;
+        var yPos = 0;
+        ctx.strokeStyle = "lightgrey";
+        ctx.lineWidth = 1;
+        while (yPos < 4320/*this.canvas.height*/) {
+            while (xPos < 7680/*this.canvas.width*/) {
+                
+                ctx.strokeRect(xPos, yPos, 20, 20);
+                xPos += 20; 
+            }
+            yPos += 20;
+            xPos = 0;
+        }
         // Draw latest things first
         for (let i = this.entities.length - 1; i >= 0; i--) {
             this.entities[i].draw(this.ctx);
         }
         //this.camera.draw(this.ctx);
+
+
 
     };
 
@@ -167,9 +183,20 @@ class GameEngine {
                 entity.update();
             }
         }        
-
+        this.canvas.width = window.innerWidth*this.zoom;
+        this.canvas.height = window.innerHeight*this.zoom;
+        this.width = window.innerWidth / this.zoom;
+        this.height = window.innerHeight / this.zoom;
+        this.originalWidth = window.innerWidth;
+        this.originalHeight = window.innerHeight;  
+        this.scaleWidth = this.width/this.originalWidth;
+        this.scaleHeight = this.height/this.originalHeight;
         this.removeFromWorldSplice();        
     };
+
+    clearAll() {
+        this.entities = [];
+    }
 
     removeFromWorldSplice() {
         for (let i = this.entities.length - 1; i >= 0; --i) {
@@ -183,6 +210,7 @@ class GameEngine {
         this.clockTick = this.timer.tick();
         this.update();
         this.draw();
+
     };
 
 };
@@ -209,10 +237,12 @@ class Timer {
     
     var canvas = document.getElementById('main');
 	var ctx = canvas.getContext('2d'); 
-    ctx.imageSmoothingEnabled = false;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    ctx.imageSmoothingEnabled = true;
 
     var gameEngine = new GameEngine(ctx);
-    gameEngine.init(ctx);
+    gameEngine.init(ctx,canvas);
     
 	//new SceneManager(gameEngine);
  
