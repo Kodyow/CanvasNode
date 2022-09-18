@@ -2,19 +2,23 @@ function addNode(){
     gameEngine.action = "add";
 }
 
+document.getElementById("add").onclick = function clear() {
+    gameEngine.createNode = true;
+}
+
 document.getElementById("clear").onclick = function clear() {
     gameEngine.entities = [];
 }
 
 document.getElementById("zoomin").onclick = function zoomin() {
-    if (gameEngine.zoom < 4)
-        gameEngine.zoom += 0.25;
+    if (gameEngine.index < gameEngine.zoomPresets.length-1)
+        gameEngine.zoom = gameEngine.zoomPresets[++gameEngine.index];
     console.log(gameEngine.zoom);
 }
 
-document.getElementById("zoomout").onclick = function zoomin() {
-    if (gameEngine.zoom > 0.25)
-        gameEngine.zoom -=0.25;
+document.getElementById("zoomout").onclick = function zoomout() {
+    if (gameEngine.index > 0)
+        gameEngine.zoom =gameEngine.zoomPresets[--gameEngine.index];
 
     
     console.log(gameEngine.zoom);

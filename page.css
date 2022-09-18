@@ -3,6 +3,7 @@ html, body {
     margin: 0;
     overflow: hidden;
     background-color: aqua;
+
 }
 #main {
     background-color: green;
@@ -12,9 +13,18 @@ html, body {
     right: 0;
     position:absolute;
     z-index: 0;
+    height: 100%;
+    width: 100%;
+    
+}
+
+#controls {
+    position:relative;
+    background-color: #FFFFFF;
 }
 
 button {
-   position:relative;
+   vertical-align: middle;
+   float:left;
 }
 
